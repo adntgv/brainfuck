@@ -19,25 +19,22 @@ const (
 )
 
 type Processor struct {
-	stack       []int64
-	pointer     uint64
-	operations  map[op]func() error
-	debug       bool
-	input       bufio.Reader
-	depth       uint64
-	ip          uint64
-	subroutines map[uint64]uint64
-	memory      []byte
-	printer     Printer
+	stack      []int64
+	pointer    uint64
+	operations map[op]func() error
+	debug      bool
+	input      bufio.Reader
+	ip         uint64
+	memory     []byte
+	printer    Printer
 }
 
 func NewProcessor() *Processor {
 	processor := &Processor{
-		stack:       make([]int64, 1),
-		debug:       true,
-		memory:      make([]byte, 0),
-		subroutines: make(map[uint64]uint64),
-		printer:     NewPrinter(),
+		stack:   make([]int64, 1),
+		debug:   true,
+		memory:  make([]byte, 0),
+		printer: NewPrinter(),
 	}
 	processor.operations = map[op]func() error{
 		right: processor.right,
@@ -103,6 +100,10 @@ func (p *Processor) process(b byte, shouldStore bool) error {
 		p.memory = append(p.memory, b)
 	}
 
+	if p.debug {
+		//p.Print(b)
+	}
+
 	operation, known := p.operations[op(b)]
 	if !known {
 		//log.Printf("unkown operation '%v'", string(b))
@@ -113,23 +114,32 @@ func (p *Processor) process(b byte, shouldStore bool) error {
 	if err != nil {
 		return err
 	}
-
-	p.ip++
+	if shouldStore {
+		p.ip++
+	}
 
 	return nil
 }
 
 func (p *Processor) start() error {
-	p.subroutines[p.depth] = p.ip + 1
-	p.depth++
 	return nil
 }
 
+func (p *Processor) clone() *Processor {
+	clone := NewProcessor()
+	clone.stack = p.stack
+	clone.pointer = p.pointer
+	clone.debug = p.debug
+	clone.operations = p.operations
+	clone.printer = p.printer
+
+	return clone
+}
+
 func (p *Processor) end() error {
-	p.depth--
 	for p.getPointerVal() != 0 {
-		p.ip = p.subroutines[p.depth]
-		for _, b := range p.getLoopBody(p.depth) {
+		operations := p.getLoopBody()
+		for _, b := range operations {
 			err := p.process(b, false)
 			if err != nil {
 				return err
@@ -140,14 +150,19 @@ func (p *Processor) end() error {
 	return nil
 }
 
-func (p *Processor) getLoopBody(depth uint64) []byte {
-	start := p.getCorrespondingStart(depth)
-	end := p.ip - 1
-	return p.memory[start:end]
-}
+func (p *Processor) getLoopBody() []byte {
+	operations := make([]byte, len(p.memory))
 
-func (p *Processor) getCorrespondingStart(depth uint64) uint64 {
-	return p.subroutines[depth]
+	for i := p.ip; p.memory[i] != '['; i-- {
+		operations = append(operations, p.memory[i])
+	}
+
+	// reverse
+	for i, j := 0, len(operations)-1; i < j; i, j = i+1, j-1 {
+		operations[i], operations[j] = operations[j], operations[i]
+	}
+
+	return operations
 }
 
 func (p *Processor) getPointerVal() int64 {

@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	filename := "hello.bf"
+	filename := "hello_loop.bf"
 	if len(os.Args) > 1 {
 		filename = os.Args[1]
 	}
