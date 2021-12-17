@@ -24,7 +24,6 @@ type Processor struct {
 	operations map[op]func() error
 	debug      bool
 	input      bufio.Reader
-	ip         uint64
 	memory     []byte
 	printer    Printer
 }
@@ -52,7 +51,7 @@ func NewProcessor() *Processor {
 
 func (p *Processor) Print(b byte) {
 	fmt.Printf("stack: %v\tpointer: %v\tpointer val: %v\n", p.stack, p.pointer, p.getPointerVal())
-	fmt.Printf("memory: %s\tip: %v\tinstruction: %c\n\n", p.memory, p.ip, b)
+	fmt.Printf("memory: %s\tip: %v\tinstruction: %c\n\n", p.memory, 0, b)
 }
 
 func (p *Processor) right() error {
@@ -100,22 +99,14 @@ func (p *Processor) process(b byte, shouldStore bool) error {
 		p.memory = append(p.memory, b)
 	}
 
-	if p.debug {
-		//p.Print(b)
-	}
-
 	operation, known := p.operations[op(b)]
 	if !known {
-		//log.Printf("unkown operation '%v'", string(b))
 		return nil
 	}
 
 	err := operation()
 	if err != nil {
 		return err
-	}
-	if shouldStore {
-		p.ip++
 	}
 
 	return nil
@@ -139,8 +130,9 @@ func (p *Processor) clone() *Processor {
 func (p *Processor) end() error {
 	for p.getPointerVal() != 0 {
 		operations := p.getLoopBody()
+		c := p.clone()
 		for _, b := range operations {
-			err := p.process(b, false)
+			err := c.process(b, false)
 			if err != nil {
 				return err
 			}
@@ -153,7 +145,7 @@ func (p *Processor) end() error {
 func (p *Processor) getLoopBody() []byte {
 	operations := make([]byte, len(p.memory))
 
-	for i := p.ip; p.memory[i] != '['; i-- {
+	for i := len(p.memory) - 1; p.memory[i] != '['; i-- {
 		operations = append(operations, p.memory[i])
 	}
 
