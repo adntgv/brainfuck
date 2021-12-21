@@ -144,10 +144,27 @@ func (p *Processor) end() error {
 }
 
 func (p *Processor) getLoopBody() []byte {
-	operations := make([]byte, len(p.memory))
+	operations := make([]byte, 0)
 
-	for i := len(p.memory) - 1; p.memory[i] != '['; i-- {
-		operations = append(operations, p.memory[i])
+	i := len(p.memory) - 1
+	pair := -1
+
+LOOP:
+	for i >= 0 {
+		item := p.memory[i]
+		switch item {
+		case '[':
+			if pair == 0 {
+				break LOOP
+			} else {
+				pair--
+			}
+		case ']':
+			pair++
+		}
+
+		operations = append(operations, item)
+		i--
 	}
 
 	// reverse
