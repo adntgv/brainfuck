@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"os"
 )
 
 type op string
@@ -19,18 +20,17 @@ const (
 )
 
 type Processor struct {
-	stack      []int64
+	stack      []byte
 	pointer    uint64
 	operations map[op]func() error
 	debug      bool
-	input      bufio.Reader
 	memory     []byte
 	printer    Printer
 }
 
 func NewProcessor() *Processor {
 	processor := &Processor{
-		stack:   make([]int64, 1),
+		stack:   make([]byte, 1),
 		debug:   true,
 		memory:  make([]byte, 0),
 		printer: NewPrinter(),
@@ -86,11 +86,12 @@ func (p *Processor) print() error {
 }
 
 func (p *Processor) read() error {
-	b, err := p.input.ReadByte()
+	reader := bufio.NewReader(os.Stdin)
+	b, err := reader.ReadByte()
 	if err != nil {
 		return fmt.Errorf("could not read byte: %v", err)
 	}
-	p.setPointerVal(int64(b))
+	p.setPointerVal(b)
 	return nil
 }
 
@@ -157,10 +158,10 @@ func (p *Processor) getLoopBody() []byte {
 	return operations
 }
 
-func (p *Processor) getPointerVal() int64 {
+func (p *Processor) getPointerVal() byte {
 	return p.stack[p.pointer]
 }
 
-func (p *Processor) setPointerVal(v int64) {
+func (p *Processor) setPointerVal(v byte) {
 	p.stack[p.pointer] = v
 }
